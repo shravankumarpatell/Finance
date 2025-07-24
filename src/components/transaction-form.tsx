@@ -31,7 +31,8 @@ export default function TransactionForm({ onTransactionAdded, selectedYear, page
     }
 
     const now = new Date();
-    const transactionDate = new Date(selectedYear, now.getMonth(), now.getDate());
+    // const transactionDate = new Date(selectedYear, now.getMonth(), now.getDate());
+    const transactionDate = new Date(selectedYear, now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds());
 
     try {
       await addDoc(collection(db, 'transactions'), {
