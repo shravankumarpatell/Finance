@@ -24,18 +24,26 @@ export interface Transaction {
   detail?: string;
   year: number;
   month: number;
-  pageType: 'home' | 'clinic';
+  workplaceId: string; // Changed from pageType to workplaceId
 }
 
 interface DashboardProps {
   selectedYear: number;
-  pageType: 'home' | 'clinic';
+  workplaceId: string; // Changed from pageType to workplaceId
+  workplaceName: string; // Added workplaceName for display
   selectedDate?: Date | null;
   selectedMonth?: number | null;
   onDateChange?: (date: Date | null) => void;
 }
 
-export default function Dashboard({ selectedYear, pageType, selectedDate, selectedMonth, onDateChange }: DashboardProps) {
+export default function Dashboard({ 
+  selectedYear, 
+  workplaceId, 
+  workplaceName,
+  selectedDate, 
+  selectedMonth, 
+  onDateChange 
+}: DashboardProps) {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,33 +57,48 @@ export default function Dashboard({ selectedYear, pageType, selectedDate, select
     expenseOnline: 0,
   });
 
+  // Force component re-render when workplaceId changes
+  const [componentKey, setComponentKey] = useState(0);
+
   const fetchTransactions = async () => {
-    if (!user) return;
+    if (!user || !workplaceId) {
+      console.log('Cannot fetch - missing user or workplaceId:', { user: !!user, workplaceId });
+      return;
+    }
+    
+    console.log('Fetching transactions for workplace:', workplaceId); // Debug log
     setLoading(true);
     
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    const monthToShow = selectedYear === currentYear ? currentMonth : 12;
+    try {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const monthToShow = selectedYear === currentYear ? currentMonth : 12;
 
-    const q = query(
-      collection(db, "transactions"), 
-      where("userId", "==", user.uid),
-      where("pageType", "==", pageType),
-      where("year", "==", selectedYear),
-      where("month", "<=", monthToShow),
-      orderBy("month", "desc"),
-      orderBy("date", "desc")
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const allTransactions = querySnapshot.docs.map(
-      (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
-    );
+      const q = query(
+        collection(db, "transactions"), 
+        where("userId", "==", user.uid),
+        where("workplaceId", "==", workplaceId),
+        where("year", "==", selectedYear),
+        where("month", "<=", monthToShow),
+        orderBy("month", "desc"),
+        orderBy("date", "desc")
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const allTransactions = querySnapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
+      );
 
-    setTransactions(allTransactions);
-    calculateDisplayTotals(allTransactions, selectedDate, internalSelectedMonth, currentMonth, currentYear);
-    setLoading(false);
+      console.log(`Fetched ${allTransactions.length} transactions for workplace ${workplaceId}`);
+      setTransactions(allTransactions);
+      calculateDisplayTotals(allTransactions, selectedDate, internalSelectedMonth, currentMonth, currentYear);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculateDisplayTotals = (allTransactions: Transaction[], selectedDate: Date | null, selectedMonth: number | null, currentMonth: number, currentYear: number) => {
@@ -126,10 +149,34 @@ export default function Dashboard({ selectedYear, pageType, selectedDate, select
   };
 
   useEffect(() => {
-    if (user) {
+    console.log('Dashboard useEffect triggered - workplaceId:', workplaceId);
+    if (user && workplaceId) {
       fetchTransactions();
     }
-  }, [user, selectedYear, pageType]);
+  }, [user, selectedYear, workplaceId]);
+
+  // Force component refresh when workplaceId changes
+  useEffect(() => {
+    console.log('WorkplaceId changed, forcing component refresh');
+    setComponentKey(prev => prev + 1);
+    setTransactions([]); // Clear previous transactions immediately
+    setDisplayTotals({
+      totalIncome: 0,
+      totalExpense: 0,
+      incomeCash: 0,
+      incomeOnline: 0,
+      expenseCash: 0,
+      expenseOnline: 0,
+    });
+  }, [workplaceId]);
+
+  // Reset selected date and month when workplace changes
+  useEffect(() => {
+    if (onDateChange) {
+      onDateChange(null);
+    }
+    setInternalSelectedMonth(null);
+  }, [workplaceId]);
 
   useEffect(() => {
     if (transactions.length > 0) {
@@ -152,6 +199,17 @@ export default function Dashboard({ selectedYear, pageType, selectedDate, select
     }
     return `This Month's`;
   };
+
+  if (!workplaceId) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-medium">No Workplace Selected</h3>
+          <p className="text-muted-foreground">Please select a workplace to view transactions.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-4 md:gap-6 lg:gap-8">
@@ -246,7 +304,8 @@ export default function Dashboard({ selectedYear, pageType, selectedDate, select
           <TransactionForm 
             onTransactionAdded={fetchTransactions} 
             selectedYear={selectedYear}
-            pageType={pageType}
+            workplaceId={workplaceId}
+            workplaceName={workplaceName}
           />
         </div>
         <div>
@@ -254,7 +313,8 @@ export default function Dashboard({ selectedYear, pageType, selectedDate, select
             transactions={transactions} 
             loading={loading} 
             selectedYear={selectedYear}
-            pageType={pageType}
+            workplaceId={workplaceId}
+            workplaceName={workplaceName}
             selectedDate={selectedDate}
             onDateChange={onDateChange}
             onMonthChange={setInternalSelectedMonth}

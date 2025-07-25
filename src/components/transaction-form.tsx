@@ -12,10 +12,16 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 interface TransactionFormProps {
   onTransactionAdded: () => void;
   selectedYear: number;
-  pageType: 'home' | 'clinic';
+  workplaceId: string; // Changed from pageType to workplaceId
+  workplaceName: string; // Added workplaceName for display
 }
 
-export default function TransactionForm({ onTransactionAdded, selectedYear, pageType }: TransactionFormProps) {
+export default function TransactionForm({ 
+  onTransactionAdded, 
+  selectedYear, 
+  workplaceId, 
+  workplaceName 
+}: TransactionFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [amount, setAmount] = useState('');
@@ -30,8 +36,11 @@ export default function TransactionForm({ onTransactionAdded, selectedYear, page
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !amount) {
-        toast({ variant: "destructive", title: "Please enter an amount." });
+    if (!user || !amount || !workplaceId) {
+        toast({ 
+          variant: "destructive", 
+          title: !amount ? "Please enter an amount." : "No workplace selected." 
+        });
         return;
     }
 
@@ -72,26 +81,32 @@ export default function TransactionForm({ onTransactionAdded, selectedYear, page
         detail: detail || '',
         year: transactionDate.getFullYear(),
         month: transactionDate.getMonth() + 1, // 1-12
-        pageType: pageType,
+        workplaceId: workplaceId, // Changed from pageType to workplaceId
       });
       
       setAmount('');
       setDetail('');
       // Keep the selected date so user can add multiple transactions for the same date
-      toast({ title: "Success!", description: `Transaction added for ${transactionDate.toLocaleDateString()}.` });
+      toast({ 
+        title: "Success!", 
+        description: `Transaction added to ${workplaceName} for ${transactionDate.toLocaleDateString()}.` 
+      });
       onTransactionAdded();
     } catch (error) {
-      toast({ variant: "destructive", title: "Error adding transaction", description: (error as Error).message });
+      toast({ 
+        variant: "destructive", 
+        title: "Error adding transaction", 
+        description: (error as Error).message 
+      });
     }
   };
 
   const getDetailLabel = () => {
-    if (pageType === 'clinic') return null;
-    return type === 'income' ? 'From whom' : 'To whom';
+    // Show detail field for all workplaces, but make it optional
+    return type === 'income' ? 'From whom (optional)' : 'To whom (optional)';
   };
 
   const getDetailPlaceholder = () => {
-    if (pageType === 'clinic') return '';
     return type === 'income' ? 'Enter name of income source' : 'Enter name of expense recipient';
   };
 
@@ -115,7 +130,7 @@ export default function TransactionForm({ onTransactionAdded, selectedYear, page
       <CardHeader>
         <CardTitle>Add a New Transaction</CardTitle>
         <CardDescription>
-          Log your income and expenses for {selectedYear}. Select any date to add transactions for that specific day.
+          Log your income and expenses for {workplaceName} in {selectedYear}. Select any date to add transactions for that specific day.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -152,18 +167,16 @@ export default function TransactionForm({ onTransactionAdded, selectedYear, page
                     </Tabs>
                 </div>
                 
-                {pageType === 'home' && getDetailLabel() && (
-                  <div className="space-y-2">
-                    <Label htmlFor="detail">{getDetailLabel()}</Label>
-                    <Input 
-                      id="detail" 
-                      type="text" 
-                      value={detail} 
-                      onChange={(e) => setDetail(e.target.value)} 
-                      placeholder={getDetailPlaceholder()}
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="detail">{getDetailLabel()}</Label>
+                  <Input 
+                    id="detail" 
+                    type="text" 
+                    value={detail} 
+                    onChange={(e) => setDetail(e.target.value)} 
+                    placeholder={getDetailPlaceholder()}
+                  />
+                </div>
                 
                 <div className="space-y-2">
                     <Label htmlFor="amount">Amount</Label>

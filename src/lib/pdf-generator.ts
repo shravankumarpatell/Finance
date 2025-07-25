@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { Transaction } from '@/components/dashboard';
 
@@ -9,17 +9,31 @@ const monthNames = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+// Get workplace name by ID
+const getWorkplaceName = async (workplaceId: string): Promise<string> => {
+  try {
+    const workplaceDoc = await getDoc(doc(db, 'workplaces', workplaceId));
+    if (workplaceDoc.exists()) {
+      return workplaceDoc.data().name || 'Unknown Workplace';
+    }
+    return 'Unknown Workplace';
+  } catch (error) {
+    console.error('Error fetching workplace name:', error);
+    return 'Unknown Workplace';
+  }
+};
+
 // Get transactions for a specific month and year
 const getMonthTransactions = async (
   userId: string,
   year: number,
   month: number,
-  pageType: 'home' | 'clinic'
+  workplaceId: string
 ): Promise<Transaction[]> => {
   const q = query(
     collection(db, 'transactions'),
     where('userId', '==', userId),
-    where('pageType', '==', pageType),
+    where('workplaceId', '==', workplaceId),
     where('year', '==', year),
     where('month', '==', month),
     orderBy('date', 'desc')
@@ -36,14 +50,14 @@ export const generateMonthlyPDF = async (
   month: number,
   year: number,
   username: string,
-  pageType: 'home' | 'clinic'
+  workplaceId: string
 ) => {
+  const workplaceName = await getWorkplaceName(workplaceId);
   const doc = new jsPDF();
   
   // Title
   doc.setFontSize(20);
-  const pageTitle = pageType === 'home' ? 'Home' : 'Clinic';
-  doc.text(`${pageTitle} - ${monthNames[month - 1]} ${year} Transaction Report`, 20, 20);
+  doc.text(`${workplaceName} - ${monthNames[month - 1]} ${year} Transaction Report`, 20, 20);
   
   // User info
   doc.setFontSize(12);
@@ -96,7 +110,7 @@ export const generateMonthlyPDF = async (
   }
   
   // Save the PDF
-  const filename = `${pageTitle}_${username.split('@')[0]}_${month.toString().padStart(2, '0')}_${year}.pdf`;
+  const filename = `${workplaceName}_${username.split('@')[0]}_${month.toString().padStart(2, '0')}_${year}.pdf`;
   doc.save(filename);
 };
 
@@ -104,15 +118,15 @@ export const generateYearlyPDF = async (
   userId: string,
   year: number,
   username: string,
-  pageType: 'home' | 'clinic'
+  workplaceId: string
 ) => {
   try {
+    const workplaceName = await getWorkplaceName(workplaceId);
     const doc = new jsPDF();
     
     // Title
     doc.setFontSize(20);
-    const pageTitle = pageType === 'home' ? 'Home' : 'Clinic';
-    doc.text(`${pageTitle} - ${year} Annual Transaction Report`, 20, 20);
+    doc.text(`${workplaceName} - ${year} Annual Transaction Report`, 20, 20);
     
     // User info
     doc.setFontSize(12);
@@ -129,7 +143,7 @@ export const generateYearlyPDF = async (
     const maxMonth = year === currentYear ? currentMonth : 12;
     
     for (let month = 1; month <= maxMonth; month++) {
-      const monthTransactions = await getMonthTransactions(userId, year, month, pageType);
+      const monthTransactions = await getMonthTransactions(userId, year, month, workplaceId);
       
       if (monthTransactions.length > 0) {
         // Calculate using the same method as monthly PDF
@@ -254,7 +268,7 @@ export const generateYearlyPDF = async (
     }
     
     // Save the PDF
-    const filename = `${pageTitle}_${username.split('@')[0]}_Annual_${year}.pdf`;
+    const filename = `${workplaceName}_${username.split('@')[0]}_Annual_${year}.pdf`;
     doc.save(filename);
     
   } catch (error) {
@@ -268,14 +282,16 @@ export const generateCustomRangePDF = async (
   fromDate: Date,
   toDate: Date,
   username: string,
-  pageType: 'home' | 'clinic'
+  workplaceId: string
 ) => {
   try {
+    const workplaceName = await getWorkplaceName(workplaceId);
+    
     // Get all transactions within the date range
     const q = query(
       collection(db, 'transactions'),
       where('userId', '==', userId),
-      where('pageType', '==', pageType),
+      where('workplaceId', '==', workplaceId),
       where('date', '>=', Timestamp.fromDate(fromDate)),
       where('date', '<=', Timestamp.fromDate(new Date(toDate.getTime() + 24 * 60 * 60 * 1000))), // Include end date
       orderBy('date', 'desc')
@@ -290,8 +306,7 @@ export const generateCustomRangePDF = async (
     
     // Title
     doc.setFontSize(20);
-    const pageTitle = pageType === 'home' ? 'Home' : 'Clinic';
-    doc.text(`${pageTitle} - Custom Report`, 20, 20);
+    doc.text(`${workplaceName} - Custom Report`, 20, 20);
     
     // User info and date range
     doc.setFontSize(12);
@@ -348,7 +363,7 @@ export const generateCustomRangePDF = async (
     // Save the PDF
     const fromDateStr = fromDate.toLocaleDateString().replace(/\//g, '-');
     const toDateStr = toDate.toLocaleDateString().replace(/\//g, '-');
-    const filename = `${pageTitle}_${username.split('@')[0]}_Custom_${fromDateStr}_to_${toDateStr}.pdf`;
+    const filename = `${workplaceName}_${username.split('@')[0]}_Custom_${fromDateStr}_to_${toDateStr}.pdf`;
     doc.save(filename);
     
   } catch (error) {

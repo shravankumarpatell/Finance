@@ -17,14 +17,14 @@ import { useToast } from '@/components/ui/use-toast';
 interface CustomReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  pageType: 'home' | 'clinic';
+  workplaceId: string; // Changed from pageType to workplaceId
   selectedYear: number;
 }
 
 export default function CustomReportDialog({ 
   open, 
   onOpenChange, 
-  pageType, 
+  workplaceId, 
   selectedYear 
 }: CustomReportDialogProps) {
   const { user } = useAuth();
@@ -64,7 +64,7 @@ export default function CustomReportDialog({
         from,
         to,
         user.email || 'user',
-        pageType
+        workplaceId // Changed from pageType to workplaceId
       );
       
       toast({
@@ -93,7 +93,7 @@ export default function CustomReportDialog({
         <DialogHeader>
           <DialogTitle>Generate Custom Report</DialogTitle>
           <DialogDescription>
-            Select a date range to generate a custom transaction report.
+            Select a date range to generate a custom transaction report for this workplace.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

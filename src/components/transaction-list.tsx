@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Transaction } from './dashboard';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
@@ -30,7 +30,8 @@ interface TransactionListProps {
   transactions: Transaction[];
   loading: boolean;
   selectedYear: number;
-  pageType: 'home' | 'clinic';
+  workplaceId: string; // Changed from pageType to workplaceId
+  workplaceName: string; // Added workplaceName for display
   selectedDate?: Date | null;
   onDateChange?: (date: Date | null) => void;
   onMonthChange?: (month: number | null) => void;
@@ -40,7 +41,8 @@ export default function TransactionList({
   transactions, 
   loading, 
   selectedYear, 
-  pageType, 
+  workplaceId, 
+  workplaceName,
   selectedDate, 
   onDateChange,
   onMonthChange 
@@ -53,6 +55,14 @@ export default function TransactionList({
   });
   const [deleteTransaction, setDeleteTransaction] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Reset month selection when workplace changes
+  useEffect(() => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const newMonth = selectedYear === currentYear ? currentDate.getMonth() + 1 : 12;
+    setSelectedMonth(newMonth);
+  }, [workplaceId, selectedYear]);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -194,8 +204,8 @@ export default function TransactionList({
               <CardTitle>Transactions for {selectedYear}</CardTitle>
               <CardDescription>
                 {selectedDate 
-                  ? `Transactions for ${format(selectedDate, 'dd/MM/yyyy')}`
-                  : `Select a month and optionally a date to view transactions from ${selectedYear}.`
+                  ? `${workplaceName} transactions for ${format(selectedDate, 'dd/MM/yyyy')}`
+                  : `Select a month and optionally a date to view ${workplaceName} transactions from ${selectedYear}.`
                 }
               </CardDescription>
             </div>
@@ -254,7 +264,7 @@ export default function TransactionList({
               <p className="pt-10 text-center">Loading...</p>
             ) : filteredTransactions.length === 0 ? (
               <p className="pt-10 text-center">
-                No transactions for {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : `${monthNames[selectedMonth - 1]} ${selectedYear}`}.
+                No transactions for {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : `${monthNames[selectedMonth - 1]} ${selectedYear}`} in {workplaceName}.
               </p>
             ) : (
               <>
