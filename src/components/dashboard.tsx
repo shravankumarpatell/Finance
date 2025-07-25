@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import TransactionForm from "@/components/transaction-form";
 import TransactionList from "@/components/transaction-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, Banknote, CreditCard } from "lucide-react";
 
 export interface Transaction {
   id: string;
@@ -24,19 +24,25 @@ export interface Transaction {
   detail?: string;
   year: number;
   month: number;
-  pageType: 'home' | 'clinic'; // New field to separate home and clinic data
+  pageType: 'home' | 'clinic';
 }
 
 interface DashboardProps {
   selectedYear: number;
   pageType: 'home' | 'clinic';
+  selectedDate?: Date | null;
+  selectedMonth?: number | null;
+  onDateChange?: (date: Date | null) => void;
 }
 
-export default function Dashboard({ selectedYear, pageType }: DashboardProps) {
+export default function Dashboard({ selectedYear, pageType, selectedDate, selectedMonth, onDateChange }: DashboardProps) {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [monthlyTotals, setMonthlyTotals] = useState({
+  const [internalSelectedMonth, setInternalSelectedMonth] = useState<number | null>(selectedMonth || null);
+  const [displayTotals, setDisplayTotals] = useState({
+    totalIncome: 0,
+    totalExpense: 0,
     incomeCash: 0,
     incomeOnline: 0,
     expenseCash: 0,
@@ -48,17 +54,14 @@ export default function Dashboard({ selectedYear, pageType }: DashboardProps) {
     setLoading(true);
     
     const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
-    
-    // If selected year is current year, show current month
-    // If selected year is previous year, show all 12 months
     const monthToShow = selectedYear === currentYear ? currentMonth : 12;
 
     const q = query(
       collection(db, "transactions"), 
       where("userId", "==", user.uid),
-      where("pageType", "==", pageType), // Filter by page type
+      where("pageType", "==", pageType),
       where("year", "==", selectedYear),
       where("month", "<=", monthToShow),
       orderBy("month", "desc"),
@@ -71,88 +74,192 @@ export default function Dashboard({ selectedYear, pageType }: DashboardProps) {
     );
 
     setTransactions(allTransactions);
-
-    // Calculate totals for current month only
-    const currentMonthTransactions = allTransactions.filter(
-      t => t.month === monthToShow
-    );
-
-    const incomeCash = currentMonthTransactions.filter(t => t.type === 'income' && t.category === 'Cash').reduce((sum, t) => sum + t.amount, 0);
-    const incomeOnline = currentMonthTransactions.filter(t => t.type === 'income' && t.category === 'Online').reduce((sum, t) => sum + t.amount, 0);
-    const expenseCash = currentMonthTransactions.filter(t => t.type === 'expense' && t.category === 'Cash').reduce((sum, t) => sum + t.amount, 0);
-    const expenseOnline = currentMonthTransactions.filter(t => t.type === 'expense' && t.category === 'Online').reduce((sum, t) => sum + t.amount, 0);
-    
-    setMonthlyTotals({ incomeCash, incomeOnline, expenseCash, expenseOnline });
-    
+    calculateDisplayTotals(allTransactions, selectedDate, internalSelectedMonth, currentMonth, currentYear);
     setLoading(false);
+  };
+
+  const calculateDisplayTotals = (allTransactions: Transaction[], selectedDate: Date | null, selectedMonth: number | null, currentMonth: number, currentYear: number) => {
+    let relevantTransactions: Transaction[] = [];
+
+    if (selectedDate) {
+      // Filter by specific date
+      relevantTransactions = allTransactions.filter(t => {
+        const txDate = t.date.toDate();
+        return txDate.toDateString() === selectedDate.toDateString();
+      });
+    } else if (selectedMonth) {
+      // Filter by selected month (when "All Dates" is selected for a specific month)
+      relevantTransactions = allTransactions.filter(t => t.month === selectedMonth);
+    } else {
+      // Default: Show current month totals
+      const monthToShow = selectedYear === currentYear ? currentMonth : currentMonth;
+      relevantTransactions = allTransactions.filter(t => t.month === monthToShow);
+    }
+
+    const incomeCash = relevantTransactions
+      .filter(t => t.type === 'income' && t.category === 'Cash')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const incomeOnline = relevantTransactions
+      .filter(t => t.type === 'income' && t.category === 'Online')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const expenseCash = relevantTransactions
+      .filter(t => t.type === 'expense' && t.category === 'Cash')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const expenseOnline = relevantTransactions
+      .filter(t => t.type === 'expense' && t.category === 'Online')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalIncome = incomeCash + incomeOnline;
+    const totalExpense = expenseCash + expenseOnline;
+
+    setDisplayTotals({ 
+      totalIncome, 
+      totalExpense, 
+      incomeCash, 
+      incomeOnline, 
+      expenseCash, 
+      expenseOnline 
+    });
   };
 
   useEffect(() => {
     if (user) {
       fetchTransactions();
     }
-  }, [user, selectedYear]);
+  }, [user, selectedYear, pageType]);
+
+  useEffect(() => {
+    if (transactions.length > 0) {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      calculateDisplayTotals(transactions, selectedDate, internalSelectedMonth, currentMonth, currentYear);
+    }
+  }, [selectedDate, internalSelectedMonth, transactions, selectedYear]);
+
+  const getTimeframeText = () => {
+    if (selectedDate) {
+      return `Selected Date's`;
+    } else if (internalSelectedMonth) {
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return `${monthNames[internalSelectedMonth - 1]}'s`;
+    }
+    return `This Month's`;
+  };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            This Month's Income (Cash)
-          </CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">₹{monthlyTotals.incomeCash.toFixed(2)}</div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            This Month's Income (Online)
-          </CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">₹{monthlyTotals.incomeOnline.toFixed(2)}</div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            This Month's Expense (Cash)
-          </CardTitle>
-          <TrendingDown className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">₹{monthlyTotals.expenseCash.toFixed(2)}</div>
-        </CardContent>
-      </Card>
-       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            This Month's Expense (Online)
-          </CardTitle>
-          <TrendingDown className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">₹{monthlyTotals.expenseOnline.toFixed(2)}</div>
-        </CardContent>
-      </Card>
-      <div className="lg:col-span-2">
-        <TransactionForm 
-          onTransactionAdded={fetchTransactions} 
-          selectedYear={selectedYear}
-          pageType={pageType}
-        />
+    <div className="grid gap-4 md:gap-6 lg:gap-8">
+      {/* Top Row - All 4 boxes: Total Income, Income Breakdown, Total Expense, Expense Breakdown */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Income */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {getTimeframeText()} Total Income
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{displayTotals.totalIncome.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+
+        {/* Income Breakdown */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Income Breakdown
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Banknote className="h-3 w-3 text-green-600" />
+                  <span className="text-xs font-medium">Cash:</span>
+                </div>
+                <span className="text-sm font-bold text-green-600">₹{displayTotals.incomeCash.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <CreditCard className="h-3 w-3 text-blue-600" />
+                  <span className="text-xs font-medium">Online:</span>
+                </div>
+                <span className="text-sm font-bold text-blue-600">₹{displayTotals.incomeOnline.toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Total Expense */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {getTimeframeText()} Total Expense
+            </CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{displayTotals.totalExpense.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+
+        {/* Expense Breakdown */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Expense Breakdown
+            </CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Banknote className="h-3 w-3 text-red-600" />
+                  <span className="text-xs font-medium">Cash:</span>
+                </div>
+                <span className="text-sm font-bold text-red-600">₹{displayTotals.expenseCash.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <CreditCard className="h-3 w-3 text-orange-600" />
+                  <span className="text-xs font-medium">Online:</span>
+                </div>
+                <span className="text-sm font-bold text-orange-600">₹{displayTotals.expenseOnline.toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <div className="lg:col-span-2">
-        <TransactionList 
-          transactions={transactions} 
-          loading={loading} 
-          selectedYear={selectedYear}
-          pageType={pageType}
-        />
+
+      {/* Bottom Row - Transaction Form and List */}
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8">
+        <div>
+          <TransactionForm 
+            onTransactionAdded={fetchTransactions} 
+            selectedYear={selectedYear}
+            pageType={pageType}
+          />
+        </div>
+        <div>
+          <TransactionList 
+            transactions={transactions} 
+            loading={loading} 
+            selectedYear={selectedYear}
+            pageType={pageType}
+            selectedDate={selectedDate}
+            onDateChange={onDateChange}
+            onMonthChange={setInternalSelectedMonth}
+          />
+        </div>
       </div>
     </div>
   );

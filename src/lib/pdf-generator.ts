@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { Transaction } from '@/components/dashboard';
 
@@ -259,6 +259,100 @@ export const generateYearlyPDF = async (
     
   } catch (error) {
     console.error('Error generating yearly PDF:', error);
+    throw error;
+  }
+};
+
+export const generateCustomRangePDF = async (
+  userId: string,
+  fromDate: Date,
+  toDate: Date,
+  username: string,
+  pageType: 'home' | 'clinic'
+) => {
+  try {
+    // Get all transactions within the date range
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', userId),
+      where('pageType', '==', pageType),
+      where('date', '>=', Timestamp.fromDate(fromDate)),
+      where('date', '<=', Timestamp.fromDate(new Date(toDate.getTime() + 24 * 60 * 60 * 1000))), // Include end date
+      orderBy('date', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const transactions = querySnapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
+    );
+
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(20);
+    const pageTitle = pageType === 'home' ? 'Home' : 'Clinic';
+    doc.text(`${pageTitle} - Custom Report`, 20, 20);
+    
+    // User info and date range
+    doc.setFontSize(12);
+    doc.text(`User: ${username}`, 20, 35);
+    doc.text(`Date Range: ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}`, 20, 42);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 49);
+    
+    // Summary calculations
+    const incomeCash = transactions.filter(t => t.type === 'income' && t.category === 'Cash').reduce((sum, t) => sum + t.amount, 0);
+    const incomeOnline = transactions.filter(t => t.type === 'income' && t.category === 'Online').reduce((sum, t) => sum + t.amount, 0);
+    const expenseCash = transactions.filter(t => t.type === 'expense' && t.category === 'Cash').reduce((sum, t) => sum + t.amount, 0);
+    const expenseOnline = transactions.filter(t => t.type === 'expense' && t.category === 'Online').reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalIncome = incomeCash + incomeOnline;
+    const totalExpense = expenseCash + expenseOnline;
+    const netAmount = totalIncome - totalExpense;
+    
+    // Summary table
+    autoTable(doc, {
+      startY: 62,
+      head: [['Category', 'Cash', 'Online', 'Total']],
+      body: [
+        ['Income', incomeCash.toFixed(2), incomeOnline.toFixed(2), totalIncome.toFixed(2)],
+        ['Expense', expenseCash.toFixed(2), expenseOnline.toFixed(2), totalExpense.toFixed(2)],
+        ['Net Amount', '', '', netAmount.toFixed(2)]
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [66, 139, 202] },
+    });
+    
+    // Transaction details
+    if (transactions.length > 0) {
+      const tableData = transactions.map(tx => [
+        tx.date.toDate().toLocaleDateString(),
+        tx.type.charAt(0).toUpperCase() + tx.type.slice(1),
+        tx.category,
+        (tx.detail || '-').substring(0, 20),
+        tx.amount.toFixed(2)
+      ]);
+      
+      // @ts-ignore
+      const lastTableY = (doc as any).lastAutoTable?.finalY || 130;
+      
+      autoTable(doc, {
+        startY: lastTableY + 20,
+        head: [['Date', 'Type', 'Method', 'Detail', 'Amount']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 139, 202] },
+        styles: { fontSize: 9 },
+      });
+    }
+    
+    // Save the PDF
+    const fromDateStr = fromDate.toLocaleDateString().replace(/\//g, '-');
+    const toDateStr = toDate.toLocaleDateString().replace(/\//g, '-');
+    const filename = `${pageTitle}_${username.split('@')[0]}_Custom_${fromDateStr}_to_${toDateStr}.pdf`;
+    doc.save(filename);
+    
+  } catch (error) {
+    console.error('Error generating custom range PDF:', error);
     throw error;
   }
 };
