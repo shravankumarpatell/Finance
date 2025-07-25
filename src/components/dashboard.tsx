@@ -65,8 +65,6 @@ export default function Dashboard({
       console.log('Cannot fetch - missing user or workplaceId:', { user: !!user, workplaceId });
       return;
     }
-    
-    console.log('Fetching transactions for workplace:', workplaceId); // Debug log
     setLoading(true);
     
     try {
@@ -90,7 +88,6 @@ export default function Dashboard({
         (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
       );
 
-      console.log(`Fetched ${allTransactions.length} transactions for workplace ${workplaceId}`);
       setTransactions(allTransactions);
       calculateDisplayTotals(allTransactions, selectedDate, internalSelectedMonth, currentMonth, currentYear);
     } catch (error) {
@@ -149,7 +146,6 @@ export default function Dashboard({
   };
 
   useEffect(() => {
-    console.log('Dashboard useEffect triggered - workplaceId:', workplaceId);
     if (user && workplaceId) {
       fetchTransactions();
     }
@@ -157,7 +153,6 @@ export default function Dashboard({
 
   // Force component refresh when workplaceId changes
   useEffect(() => {
-    console.log('WorkplaceId changed, forcing component refresh');
     setComponentKey(prev => prev + 1);
     setTransactions([]); // Clear previous transactions immediately
     setDisplayTotals({

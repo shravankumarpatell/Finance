@@ -11,7 +11,6 @@ export default function MainDashboardPage() {
 
   // Reset date and month selections when workplace changes
   useEffect(() => {
-    console.log('Workplace changed, resetting selections'); // Debug log
     setSelectedDate(null);
     setSelectedMonth(null);
   }, [currentWorkplace?.id, refreshTrigger]);

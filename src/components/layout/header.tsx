@@ -101,20 +101,7 @@ export default function Header({ selectedYear, onYearChange }: HeaderProps) {
         </nav>
         
         <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-          {/* Manual Refresh Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              console.log('Manual refresh triggered');
-              window.location.reload();
-            }}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-
-          {/* Year Selector */}
+         {/* Year Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
