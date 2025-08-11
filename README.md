@@ -1,4 +1,4 @@
-# FinTrack 📊
+# FinTrack
 
 > Multi-Workplace Personal Finance Management Platform
 
@@ -12,41 +12,41 @@
 
 ## 🌟 Features
 
-### 💼 Multi-Workplace Support
+### Multi-Workplace Support
 - **Workplace Organization**: Create and manage multiple financial workspaces (Personal, Business, Freelance, etc.)
 - **Context Switching**: Seamlessly switch between different financial contexts
 - **Isolated Data**: Each workplace maintains separate transaction records and analytics
 
-### 📱 Modern Authentication
+### Modern Authentication
 - **Multi-Modal Login**: Email/password and Google OAuth authentication
 - **Mobile-Friendly**: Phone number-based registration with secure authentication
 - **User Profiles**: Personalized user experience with profile management
 
-### 💰 Transaction Management
+### Transaction Management
 - **Dual-Method Tracking**: Cash and Online transaction categorization
 - **Real-Time Entry**: Add income and expenses with immediate reflection
 - **Flexible Dating**: Add transactions for any date within the last 3 months
 - **Smart Validation**: Prevents future-dated transactions and invalid entries
 
-### 📊 Advanced Analytics
+### Advanced Analytics
 - **Real-Time Dashboards**: Live financial overview with visual breakdowns
 - **Monthly/Yearly Views**: Comprehensive time-based financial analysis
 - **Category Breakdown**: Detailed Cash vs Online transaction analytics
 - **Dynamic Filtering**: Filter by date, month, or custom date ranges
 
-### 📄 Professional Reporting
+### Professional Reporting
 - **PDF Generation**: Automated monthly and annual financial reports
 - **Custom Reports**: Generate reports for any date range
 - **Professional Formatting**: Clean, printable financial statements
 - **Multi-Format Export**: Download reports in multiple formats
 
-### 🔒 Data Management
+### Data Management
 - **Automatic Cleanup**: Smart data retention with automatic old data removal
 - **Real-Time Sync**: Live data synchronization across devices
 - **Secure Storage**: Firebase Firestore for reliable data persistence
 - **Data Isolation**: Complete separation between different users and workplaces
 
-## 🛠️ Technical Architecture
+## Technical Architecture
 
 ### Frontend Stack
 - **React 18** - Modern component-based UI framework
@@ -223,7 +223,7 @@ service cloud.firestore {
 }
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Vercel Deployment
 
@@ -248,7 +248,7 @@ service cloud.firestore {
    }
    ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run unit tests
@@ -261,7 +261,7 @@ npm run test:coverage
 npm run test:e2e
 ```
 
-## 📊 Performance Features
+## Performance Features
 
 - **Code Splitting**: Lazy-loaded components for optimal bundle size
 - **Real-time Updates**: Live data synchronization without page refreshes
@@ -269,14 +269,14 @@ npm run test:e2e
 - **Caching**: Efficient data caching for improved performance
 - **PWA Ready**: Service worker support for offline functionality
 
-## 🔐 Security Features
+## Security Features
 
 - **Data Isolation**: Complete separation between users and workplaces
 - **Input Validation**: Client and server-side validation
 - **Secure Authentication**: Firebase Auth with multiple providers
 - **HTTPS Enforcement**: End-to-end encryption for all communications
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please follow these steps:
 
@@ -296,7 +296,7 @@ We welcome contributions! Please follow these steps:
 - Ensure responsive design for mobile devices
 - Test across different browsers and screen sizes
 
-## 📄 API Documentation
+## API Documentation
 
 ### Authentication
 
@@ -339,7 +339,7 @@ interface Transaction {
 }
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -358,14 +358,14 @@ interface Transaction {
 - Check Firebase Authentication settings
 - Verify OAuth provider configurations
 
-## 📈 Analytics & Monitoring
+##  Analytics & Monitoring
 
 - **Real-time Usage**: Monitor active users and sessions
 - **Performance Tracking**: Page load times and user interactions
 - **Error Monitoring**: Automatic error reporting and tracking
 - **User Feedback**: Built-in feedback collection system
 
-## 🎯 Roadmap
+##  Roadmap
 
 ### Upcoming Features
 - [ ] **Budget Planning**: Set and track monthly budgets
@@ -378,17 +378,17 @@ interface Transaction {
 - [ ] **Multi-Currency**: Support for multiple currencies
 - [ ] **Tax Reporting**: Automated tax document generation
 
-## 📞 Support
+## Support
 
 - **Email**: shravankumarpatelofficial@gmail.com
 - **GitHub Issues**: Report bugs and request features
 - **Documentation**: Comprehensive guides and tutorials
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Firebase** for backend infrastructure and authentication
 - **Vercel** for seamless deployment and hosting
